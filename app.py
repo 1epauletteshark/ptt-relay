@@ -129,4 +129,8 @@ def ptt():
     if r.status_code != 200:
         return jsonify({"stage": "tts", "error": r.text, "reply": reply_text}), 500
 
-    return Response(r.content, mimetype="application/octet-stream")
+    return Response(
+        r.content,
+        mimetype="application/octet-stream",
+        headers={"X-Audio-Format": "pcm_s16le_24khz_mono"}
+    )
