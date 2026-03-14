@@ -113,7 +113,7 @@ def ptt():
         "model": TTS_MODEL,
         "voice": "alloy",
         "input": reply_text,
-        "response_format": "wav"
+        "response_format": "pcm"
     }
 
     r = requests.post(
@@ -129,4 +129,4 @@ def ptt():
     if r.status_code != 200:
         return jsonify({"stage": "tts", "error": r.text, "reply": reply_text}), 500
 
-    return Response(r.content, mimetype="audio/wav")
+    return Response(r.content, mimetype="application/octet-stream")
