@@ -1,9 +1,16 @@
 from flask import Flask, request, Response, jsonify
 import requests
-import json
 import os
 
 app = Flask(__name__)
+
+@app.route("/", methods=["GET"])
+def home():
+    return "PTT relay is running.", 200
+
+@app.route("/healthz", methods=["GET"])
+def healthz():
+    return "ok", 200
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
@@ -31,10 +38,6 @@ def extract_output_text(data):
                         parts.append(t)
     return "".join(parts).strip()
 
-@app.route("/")
-def home():
-    return "PTT relay is running."
-
 @app.route("/ptt", methods=["POST"])
 def ptt():
     if not OPENAI_API_KEY:
@@ -55,9 +58,7 @@ def ptt():
 
     r = requests.post(
         "https://api.openai.com/v1/audio/transcriptions",
-        headers={
-            "Authorization": f"Bearer {OPENAI_API_KEY}"
-        },
+        headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
         files=files,
         data=data,
         timeout=120
@@ -70,7 +71,7 @@ def ptt():
     if not transcript:
         transcript = "I didn't catch that."
 
-    # 2) Generate text reply
+    # 2) Text reply
     body = {
         "model": TEXT_MODEL,
         "max_output_tokens": 80,
@@ -107,7 +108,7 @@ def ptt():
     if not reply_text:
         reply_text = "Sorry, I do not have an answer right now."
 
-    # 3) Turn text reply into speech
+    # 3) Text to speech
     tts_body = {
         "model": TTS_MODEL,
         "voice": "alloy",
@@ -129,7 +130,3 @@ def ptt():
         return jsonify({"stage": "tts", "error": r.text, "reply": reply_text}), 500
 
     return Response(r.content, mimetype="audio/wav")
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
