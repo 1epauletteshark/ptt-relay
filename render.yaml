@@ -2,9 +2,45 @@ services:
   - type: web
     name: ptt-relay
     env: python
-    plan: free
+    plan: free                          # upgrade to 'starter' for always-on (no cold starts)
+    region: oregon                      # pick closest to your ESP32
+
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
+
+    # gevent async workers — each worker handles many concurrent connections
+    # without blocking. Ideal for I/O-heavy pipelines like STT→LLM→TTS.
+    # --timeout 120  matches our httpx read timeout for slow TTS generations.
+    startCommand: >
+      gunicorn
+      --worker-class gevent
+      --workers 2
+      --worker-connections 50
+      --bind 0.0.0.0:$PORT
+      --timeout 120
+      --keep-alive 5
+      --log-level info
+      app:app
+
     envVars:
+      # Required
       - key: OPENAI_API_KEY
-        sync: false
+        sync: false                     # set manually in Render dashboard
+
+      # Optional overrides — remove any you don't need
+      - key: TEXT_MODEL
+        value: gpt-4.1-mini            # fast + cheap; swap for gpt-4.1 for smarter answers
+
+      - key: STT_MODEL
+        value: gpt-4o-mini-transcribe  # fastest whisper variant
+
+      - key: TTS_MODEL
+        value: gpt-4o-mini-tts         # fastest TTS variant
+
+      - key: TTS_VOICE
+        value: alloy                   # alloy | echo | fable | onyx | nova | shimmer
+
+      - key: MAX_TOKENS
+        value: "80"                    # keeps spoken answers short = faster TTS
+
+      - key: ENABLE_WEB_SEARCH
+        value: "true"                  # set false to always skip web search
